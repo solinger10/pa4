@@ -1,4 +1,5 @@
 #include "kernel.h"
+#include "network.h"
 
 struct bootparams *bootparams;
 
@@ -60,6 +61,12 @@ void interrupt_handler(int cause)
   if (pending_interrupts & (1 << INTR_TIMER)) {
     printf("interrupt_handler: got a spurious timer interrupt, ignoring it and hoping it doesn't happen again\n");
     unhandled_interrupts &= ~(1 << INTR_TIMER);
+  }
+
+  if (pending_interrupts & (1 << INTR_NETWORK)) {
+    printf("interrupt_handler: got a network interrupt, handling it\n");
+    network_trap();
+    unhandled_interrupts &= ~(1 << INTR_NETWORK);
   }
 
   if (unhandled_interrupts != 0) {
@@ -141,6 +148,10 @@ void __boot() {
 
     // initialize keyboard late, since it isn't really used by anything else
     keyboard_init();
+
+    network_init();
+    network_set_interrupts(1);
+    network_start_receive();
 
     // see which cores are already on
     for (int i = 0; i < 32; i++)
