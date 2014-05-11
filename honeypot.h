@@ -96,4 +96,10 @@ struct honeypot_command_packet {
 // The 'data' field can be ignored.
 #define HONEYPOT_PRINT		0x301
 
+//analyses the data, loops continuously
+void analyze();
+
+//prints statistics
+void print_stats();
+
 #endif

@@ -1,4 +1,9 @@
-// Initializes the network driver, allocating the space for the ring buffer.
+#ifndef _NETWORK_H_
+#define _NETWORK_H_
+
+#include "kernel.h"
+
+// Initializes teh network drive, allocating the space for the ring buffer.
 void network_init();
 
 // Starts receiving packets!
@@ -13,3 +18,5 @@ void network_poll();
 
 // Called when a network interrupt occurs.
 void network_trap();
+
+#endif

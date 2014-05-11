@@ -1,4 +1,5 @@
 #include "kernel.h"
+#include "honeypot.h"
 
 // Keyboard device driver.
 
@@ -27,8 +28,12 @@ void keyboard_trap() {
   while (dev_kbd->status) {
     // read the character
     char c = dev_kbd->data;
+    if(c == 'p') {
+      print_stats();
+    }
+    
     // then just print it
-    putchar(c);
+    //putchar(c);
   }
 }
 
