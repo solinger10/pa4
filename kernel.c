@@ -147,16 +147,15 @@ void __boot() {
     // initialize keyboard late, since it isn't really used by anything else
     keyboard_init();
     
+    //init_safe_malloc();
+    initQueue();
+    
     //intialize network capabilities
     printf("Initializing network... ");
     network_init();
     network_set_interrupts(0);
     network_start_receive();
     printf("network calls made \n");
-	
-	//initialize queue
-	//struct queue *queue=queue_new();
-	initQueue();
     
     // see which cores are already on
     for (int i = 0; i < 32; i++)
@@ -171,12 +170,12 @@ void __boot() {
       printf("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
     
   } else if (current_cpu_id() == 1) {
-    printf("about to call poll");
+    printf_m("about to call poll");
     network_poll();
   }
   
 
-  printf("about to call analyze");
+  printf_m("about to call analyze\n");
   analyze();
 
   printf("Core %d of %d is alive!\n", current_cpu_id(), current_cpu_exists());

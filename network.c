@@ -60,10 +60,10 @@ void network_poll() {
   while(1){
     while(network_dev->rx_tail < network_dev->rx_head) {
       int index = network_dev->rx_tail % 16;
-      printf("rx_head: %d, rx_tail: %d, index: %d\n",network_dev->rx_head, network_dev->rx_tail, index);
-      printf("About to add to the queue\n");
+      //printf_m("rx_head: %d, rx_tail: %d, index: %d\n",network_dev->rx_head, network_dev->rx_tail, index);
+      //printf_m("About to add to the queue\n");
       queue_add((struct honeypot_command_packet *)physical_to_virtual(ring[index].dma_base));
-      printf("Incrementing rx_tail\n");
+      printf_m("Added to the queue\n");
       network_dev->rx_tail++;
     }
   }

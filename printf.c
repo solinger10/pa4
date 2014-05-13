@@ -544,6 +544,7 @@ int main (void)
 }
 #endif
 
+#include "mutex.h"
 #include "kernel.h"
 
 int printf_u (const char *format, ...)
@@ -561,17 +562,21 @@ int printf_i (const char *format, ...)
   return ret;
 }
 
-/*
+//int *printf_mutex = create_mutex();
 static int printf_mutex = 0;
 int printf_m (const char *format, ...)
 {
   int *varg = (int *) (char *) (&format);
+  //printf("getting lock????\n");
   mutex_lock(&printf_mutex);
+  //printf("got it????\n");
   int ret = print (0, varg);
+  //printf("releasing lock????\n");
   mutex_unlock(&printf_mutex);
+  //printf("released????\n");
   return ret;
 }
-
+/*
 int printf_im (const char *format, ...)
 {
   int *varg = (int *) (char *) (&format);
