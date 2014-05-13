@@ -1,4 +1,5 @@
 #include "kernel.h"
+#include "mutex.h"
 
 struct bootparams *bootparams;
 
@@ -56,7 +57,11 @@ void interrupt_handler(int cause)
     keyboard_trap();
     unhandled_interrupts &= ~(1 << INTR_KEYBOARD);
   }
-
+  if (pending_interrupts & (1 << INTR_NETWORK)) {
+    if (debug) printf("interrupt_handler: got a network interrupt, handling it\n");
+    network_trap();
+    unhandled_interrupts &= ~(1 << INTR_NETWORK);
+  }
   if (pending_interrupts & (1 << INTR_TIMER)) {
     printf("interrupt_handler: got a spurious timer interrupt, ignoring it and hoping it doesn't happen again\n");
     unhandled_interrupts &= ~(1 << INTR_TIMER);
@@ -110,7 +115,7 @@ void trap_handler(struct mips_core_data *state, unsigned int status, unsigned in
       printf("trap_handler: some code attempted to execute a non-executable virtual address!\n");
       break;
     default:
-      printf("trap_handler: unknown error code 0x%x\n", ecode);
+      printf("trap_handler: unknown error code %x\n", ecode);
       break;
   }
   shutdown();
@@ -141,19 +146,26 @@ void __boot() {
 
     // initialize keyboard late, since it isn't really used by anything else
     keyboard_init();
-
+    
+    //intialize network capabilities
+    printf("Initializing network... ");
+    network_init();
+    network_set_interrupts(0);
+    network_start_receive();
+    printf("network calls made \n");
+    
     // see which cores are already on
     for (int i = 0; i < 32; i++)
       printf("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
 
     // turn on all other cores
     set_cpu_enable(0xFFFFFFFF);
-
+    
     // see which cores got turned on
     busy_wait(0.1);
     for (int i = 0; i < 32; i++)
       printf("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
-
+    
   } else {
     /* remaining cores boot after core 0 turns them on */
 
@@ -163,15 +175,39 @@ void __boot() {
   printf("Core %d of %d is alive!\n", current_cpu_id(), current_cpu_exists());
 
   busy_wait(current_cpu_id() * 0.1); // wait a while so messages from different cores don't get so mixed up
-  int size = 64 * 1024 * 4;
+  /*int size = 64 * 1024 * 4;
   printf("about to do calloc(%d, 1)\n", size);
   unsigned int t0  = current_cpu_cycles();
   calloc(size, 1);
   unsigned int t1  = current_cpu_cycles();
   printf("DONE (%u cycles)!\n", t1 - t0);
-
-  while (1) ;
-
+ */ /*
+  struct queue *queue=queue_new();
+  int num_polls = 0;
+  while (num_polls<50) {
+    //intialize queue
+    if (current_cpu_id()==0){
+      
+      printf("About to call network_poll()\n");
+      network_poll(queue);
+      printf("Call to network_poll() returned, num_polls is: %d\n",++num_polls);
+      printf("pointer to queue is: %p\n",queue);
+      printf("queue->buffer is: %p\n",queue->buffer);
+      printf("queue->buffer_size is: %d\n",queue->buffer_size);
+      printf("queue->length is: %d\n",queue->length); 
+    }
+  }
+  printf("pointer to queue is: %p\n",queue);
+  printf("queue->buffer is: %p\n",queue->buffer);
+  printf("queue->buffer_size is: %d\n",queue->buffer_size);
+  printf("queue->length is: %d\n",queue->length);
+  printf("Checking the contents of the queue... \n");
+  for (int i=0; i<queue->length; i++){
+     unsigned short secret = queue->buffer[i].secret_big_endian;
+     printf("The secret for packet %d is: %x\n",i,secret);
+  }
+  printf("... finished check\n");
+*/
   for (int i = 1; i < 30; i++) {
     int size = 1 << i;
     printf("about to do calloc(%d, 1)\n", size);
@@ -179,9 +215,8 @@ void __boot() {
   }
 
 
-
   while (1) {
-    printf("Core %d is still running...\n", current_cpu_id());
+    //printf("Core %d is still running...\n", current_cpu_id());
     busy_wait(4.0); // wait 4 seconds
   }
 

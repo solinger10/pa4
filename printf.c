@@ -597,11 +597,16 @@ int printf (const char *format, ...)
 */
 
 // default printf is the same as printf_i, for now
+static unsigned int print_lock = 0;
+void mutex_lock(unsigned int *lock);
+void mutex_unlock(unsigned int *lock);
 int printf (const char *format, ...)
 {
+  mutex_lock(&print_lock);
   int *varg = (int *) (char *) (&format);
   int level = intr_disable();
   int ret = print (0, varg);
   intr_restore(level);
+  mutex_unlock(&print_lock);
   return ret;
 }
