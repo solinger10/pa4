@@ -63,6 +63,7 @@ void network_poll() {
       //printf_m("About to add to the queue\n");
       queue_add((struct honeypot_command_packet *)physical_to_virtual(ring[index].dma_base));
       //printf_m("Added to the queue\n");
+      ring[index].dma_len = BUFFER_SIZE;
       network_dev->rx_tail++;
     }
   }
