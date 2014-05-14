@@ -1,11 +1,6 @@
 #include "mutex.h"
 
 
-int *create_mutex() {
-    int *lock = malloc(sizeof(int));
-    *lock = 0;
-    return lock;
-}
 
 // The value stored in memory at the location pointed to by lock is
 // 0 iff no other thread is using the corresponding data structure

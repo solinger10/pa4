@@ -55,7 +55,6 @@ void network_set_interrupts(int opt) {
 
 //polls the buffer and "processes" the packets into the queue
 void network_poll() {
-  printf("poll called");
   struct dma_ring_slot *ring = (struct dma_ring_slot *) physical_to_virtual(network_dev->rx_base);
   while(1){
     while(network_dev->rx_tail < network_dev->rx_head) {
@@ -63,7 +62,7 @@ void network_poll() {
       //printf_m("rx_head: %d, rx_tail: %d, index: %d\n",network_dev->rx_head, network_dev->rx_tail, index);
       //printf_m("About to add to the queue\n");
       queue_add((struct honeypot_command_packet *)physical_to_virtual(ring[index].dma_base));
-      printf_m("Added to the queue\n");
+      //printf_m("Added to the queue\n");
       network_dev->rx_tail++;
     }
   }
