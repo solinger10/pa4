@@ -544,6 +544,7 @@ int main (void)
 }
 #endif
 
+#include "mutex.h"
 #include "kernel.h"
 
 int printf_u (const char *format, ...)
@@ -561,7 +562,6 @@ int printf_i (const char *format, ...)
   return ret;
 }
 
-/*
 static int printf_mutex = 0;
 int printf_m (const char *format, ...)
 {
@@ -571,7 +571,7 @@ int printf_m (const char *format, ...)
   mutex_unlock(&printf_mutex);
   return ret;
 }
-
+/*
 int printf_im (const char *format, ...)
 {
   int *varg = (int *) (char *) (&format);
@@ -597,16 +597,11 @@ int printf (const char *format, ...)
 */
 
 // default printf is the same as printf_i, for now
-static unsigned int print_lock = 0;
-void mutex_lock(unsigned int *lock);
-void mutex_unlock(unsigned int *lock);
 int printf (const char *format, ...)
 {
-  mutex_lock(&print_lock);
   int *varg = (int *) (char *) (&format);
   int level = intr_disable();
   int ret = print (0, varg);
   intr_restore(level);
-  mutex_unlock(&print_lock);
   return ret;
 }

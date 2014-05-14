@@ -1,4 +1,5 @@
 #include "kernel.h"
+#include "mutex.h"
 
 static int ram_start_page, ram_end_page, ram_pages;
 
@@ -27,21 +28,21 @@ unsigned int virtual_to_physical(void *vptr)
   unsigned int context = current_cpu_context();
   unsigned int ppn = context >> 12;
   if (ppn < ram_start_page || ppn >= ram_end_page) {
-    printf("context register seems to point to non-RAM\n");
+    printf_m("context register seems to point to non-RAM\n");
     return NOPAGE;
   }
 
   unsigned int *pd = physical_to_virtual(ppn << 12);
   unsigned int pde = pd[pdi];
   if (!(pde & 0x1)) {
-    printf("PDE is invalid for virtual address %p\n", vptr);
+    printf_m("PDE is invalid for virtual address %p\n", vptr);
     return NOPAGE;
   }
   
   unsigned int *pt = physical_to_virtual(pde & ~0xFFF);
   unsigned int pte = pt[pti];
   if (!(pte & 0x1)) {
-    printf("PTE is invalid for virtual address %p\n", vptr);
+    printf_m("PTE is invalid for virtual address %p\n", vptr);
     return NOPAGE;
   }
 
@@ -109,7 +110,7 @@ static void page_alloc_init()
 void *alloc_pages(unsigned int count)
 {
   if (count == 0 || count > ram_pages - pages_reserved) {
-    printf("alloc_pages: sorry, can't allocate %d pages (only %d RAM pages available)\n",
+    printf_m("alloc_pages: sorry, can't allocate %d pages (only %d RAM pages available)\n",
 	count, ram_pages - pages_reserved);
     shutdown();
   }
@@ -130,7 +131,7 @@ void *alloc_pages(unsigned int count)
       return physical_to_virtual((ram_start_page + pages_reserved + start) << 12);
     }
   }
-  printf("alloc_pages: no free pages left, sorry\n");
+  printf_m("alloc_pages: no free pages left, sorry\n");
   shutdown();
 }
 
@@ -144,33 +145,33 @@ void *calloc_pages(unsigned int count)
 void free_pages(void *page, unsigned int count)
 {
   if (count == 0 || count > ram_pages - pages_reserved) {
-    printf("free_pages: sorry, can't free %d pages (only %d RAM pages available)\n",
+    printf_m("free_pages: sorry, can't free %d pages (only %d RAM pages available)\n",
 	count, ram_pages - pages_reserved);
     shutdown();
   }
   void *end = page + count*PAGE_SIZE - 1;
   if (page < (void *)0xC0000000 || end < (void *)0xC0000000) {
-    printf("free_pages: virtual address %p through %p is too low to have come from alloc_pages\n", page, end);
+    printf_m("free_pages: virtual address %p through %p is too low to have come from alloc_pages\n", page, end);
     shutdown();
   }
   unsigned int paddr = virtual_to_physical(page);
   if (paddr & 0xfff) {
-    printf("free_pages: virtual address %p is not aligned properly\n", page);
+    printf_m("free_pages: virtual address %p is not aligned properly\n", page);
     shutdown();
   }
   unsigned int ppn = paddr / PAGE_SIZE;
   if (ppn < ram_start_page || ppn + count > ram_end_page) {
-    printf("free_pages: virtual address %p is not mapped to RAM\n", page);
+    printf_m("free_pages: virtual address %p is not mapped to RAM\n", page);
     shutdown();
   }
   if (ppn < ram_start_page + pages_reserved) {
-    printf("free_pages: virtual address %p is reserved and should never be freed\n", page);
+    printf_m("free_pages: virtual address %p is reserved and should never be freed\n", page);
     shutdown();
   }
   while (count > 0) {
     int i = (ppn - ram_start_page - pages_reserved);
     if (bitmap_get(page_alloc_bitmap, i) == 0) {
-      printf("free_pages: virtual address %p is already free\n", page);
+      printf_m("free_pages: virtual address %p is already free\n", page);
       shutdown();
     }
     bitmap_set(page_alloc_bitmap, i, 0);
@@ -225,6 +226,10 @@ struct bigblock_info {
 #define NUM_BLOCKSIZES (MAX_BLOCKSIZE2 - MIN_BLOCKSIZE2 + 1) // 5 though 11 inclusive
 struct smallblock_info smallblock[NUM_BLOCKSIZES];
 
+//used to make malloc concurrency safe
+static int malloc_lock = 0;
+static int free_lock = 0;
+
 static void malloc_init()
 {
   for (int i = 0; i < NUM_BLOCKSIZES; i++) {
@@ -235,6 +240,7 @@ static void malloc_init()
 
 void *malloc(unsigned int size)
 {
+  mutex_lock(&malloc_lock);
   // try small allocation first
   for (int i = 0; i < NUM_BLOCKSIZES; i++) {
     if (size <= smallblock[i].blocksize) {
@@ -253,6 +259,7 @@ void *malloc(unsigned int size)
 	    // then use that block
 	    bitmap_set(elt->bitmap, j, 1);
 	    void *pointer = (void *)elt + j * elt->blocksize;
+      mutex_unlock(&malloc_lock);
 	    return pointer;
 
 	  }
@@ -274,6 +281,7 @@ void *malloc(unsigned int size)
       // remainder of block is the actual data
       bitmap_set(elt->bitmap, 1, 1);
       void *pointer = p + 1 * elt->blocksize;
+      mutex_unlock(&malloc_lock);
       return pointer;
     }
   }
@@ -288,8 +296,9 @@ void *malloc(unsigned int size)
   elt->pagecount = n;
   // remainder of page is the actual data
   void *pointer = (p + sizeof(struct bigblock_info));
+  mutex_unlock(&malloc_lock);
   return pointer;
-}
+ }
 
 void *calloc(unsigned int size, unsigned int count)
 {
@@ -302,16 +311,17 @@ void *calloc(unsigned int size, unsigned int count)
 
 void free(void *pointer)
 {
+  mutex_lock(&free_lock);
   // round down to nearest page boundary
   void *page = (void *)((unsigned int)pointer & ~(PAGE_SIZE-1));
   // some trivial sanity checks 
   if (page < (void *)0xC0000000) {
-    printf("free: virtual address %p is too low to have come from malloc\n", pointer);
+    printf_m("free: virtual address %p is too low to have come from malloc\n", pointer);
     shutdown();
   }
   // first word on page should be a magic number, second should be blocksize
   if (pointer - page < 8) {
-    printf("free: virtual address %p is not aligned properly to have come from malloc\n", pointer);
+    printf_m("free: virtual address %p is not aligned properly to have come from malloc\n", pointer);
     shutdown();
   }
 
@@ -322,23 +332,25 @@ void free(void *pointer)
     // calculate index into blocks of page
     int idx = (pointer - page) / elt->blocksize;
     if (idx < 1 || pointer != (page + idx * elt->blocksize)) {
-      printf("free: virtual address %p is not aligned properly to have come from malloc\n", pointer);
+      printf_m("free: virtual address %p is not aligned properly to have come from malloc\n", pointer);
       shutdown();
     }
     if (bitmap_get(elt->bitmap, idx) == 0) {
-      printf("free: virtual address %p was already freed, or has not been allocated\n", pointer);
+      printf_m("free: virtual address %p was already freed, or has not been allocated\n", pointer);
       shutdown();
     }
     bitmap_set(elt->bitmap, idx, 0);
     // we could, if we want, free the whole page if all the blocks on the page
     // are empty, but we won't bother
+    mutex_unlock(&free_lock);
   } else if (*magic == 0xf00dface) {
     // big block
     struct bigblock_info *elt = page;
     elt->magic = 0xdeadf00d; // erase the magic number
     free_pages(page, elt->pagecount);
+    mutex_unlock(&free_lock);
   } else {
-    printf("free: virtual address %p has bad magic (0x%x), either didn't come from malloc, was freed, or is corrupted\n", pointer, *magic);
+    printf_m("free: virtual address %p has bad magic (0x%x), either didn't come from malloc, was freed, or is corrupted\n", pointer, *magic);
     shutdown();
   }
 }

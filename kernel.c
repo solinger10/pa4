@@ -1,5 +1,7 @@
 #include "kernel.h"
-#include "mutex.h"
+#include "honeypot.h"
+#include "hashtable.h"
+
 
 struct bootparams *bootparams;
 
@@ -53,29 +55,29 @@ void interrupt_handler(int cause)
   int unhandled_interrupts = pending_interrupts;
 
   if (pending_interrupts & (1 << INTR_KEYBOARD)) {
-    if (debug) printf("interrupt_handler: got a keyboard interrupt, handling it\n");
+    if (debug) printf_m("interrupt_handler: got a keyboard interrupt, handling it\n");
     keyboard_trap();
     unhandled_interrupts &= ~(1 << INTR_KEYBOARD);
   }
   if (pending_interrupts & (1 << INTR_NETWORK)) {
-    if (debug) printf("interrupt_handler: got a network interrupt, handling it\n");
+    if (debug) printf_m("interrupt_handler: got a network interrupt, handling it\n");
     network_trap();
     unhandled_interrupts &= ~(1 << INTR_NETWORK);
   }
   if (pending_interrupts & (1 << INTR_TIMER)) {
-    printf("interrupt_handler: got a spurious timer interrupt, ignoring it and hoping it doesn't happen again\n");
+    printf_m("interrupt_handler: got a spurious timer interrupt, ignoring it and hoping it doesn't happen again\n");
     unhandled_interrupts &= ~(1 << INTR_TIMER);
   }
 
   if (unhandled_interrupts != 0) {
-    printf("got interrupt_handler: one or more other interrupts (0x%08x)...\n", unhandled_interrupts);
+    printf_m("got interrupt_handler: one or more other interrupts (0x%08x)...\n", unhandled_interrupts);
   }
 
 }
 
 void trap_handler(struct mips_core_data *state, unsigned int status, unsigned int cause)
 {
-  if (debug) printf("trap_handler: status=0x%08x cause=0x%08x on core %d\n", status, cause, current_cpu_id());
+  if (debug) printf_m("trap_handler: status=0x%08x cause=0x%08x on core %d\n", status, cause, current_cpu_id());
   // diagnose the cause of the trap
   int ecode = (cause & 0x7c) >> 2;
   switch (ecode) {
@@ -83,39 +85,39 @@ void trap_handler(struct mips_core_data *state, unsigned int status, unsigned in
       interrupt_handler(cause);
       return; /* this is the only exception we currently handle; all others cause a shutdown() */
     case ECODE_MOD:	  /* attempt to write to a non-writable page */
-      printf("trap_handler: some code is trying to write to a non-writable page!\n");
+      printf_m("trap_handler: some code is trying to write to a non-writable page!\n");
       break;
     case ECODE_TLBL:	  /* page fault during load or instruction fetch */
     case ECODE_TLBS:	  /* page fault during store */
-      printf("trap_handler: some code is trying to access a bad virtual address!\n");
+      printf_m("trap_handler: some code is trying to access a bad virtual address!\n");
       break;
     case ECODE_ADDRL:	  /* unaligned address during load or instruction fetch */
     case ECODE_ADDRS:	  /* unaligned address during store */
-      printf("trap_handler: some code is trying to access a mis-aligned address!\n");
+      printf_m("trap_handler: some code is trying to access a mis-aligned address!\n");
       break;
     case ECODE_IBUS:	  /* instruction fetch bus error */
-      printf("trap_handler: some code is trying to execute non-RAM physical addresses!\n");
+      printf_m("trap_handler: some code is trying to execute non-RAM physical addresses!\n");
       break;
     case ECODE_DBUS:	  /* data load/store bus error */
-      printf("trap_handler: some code is read or write physical address that can't be!\n");
+      printf_m("trap_handler: some code is read or write physical address that can't be!\n");
       break;
     case ECODE_SYSCALL:	  /* system call */
-      printf("trap_handler: who is doing a syscall? not in this project...\n");
+      printf_m("trap_handler: who is doing a syscall? not in this project...\n");
       break;
     case ECODE_BKPT:	  /* breakpoint */
-      printf("trap_handler: reached breakpoint, or maybe did a divide by zero!\n");
+      printf_m("trap_handler: reached breakpoint, or maybe did a divide by zero!\n");
       break;
     case ECODE_RI:	  /* reserved opcode */
-      printf("trap_handler: trying to execute something that isn't a valid instruction!\n");
+      printf_m("trap_handler: trying to execute something that isn't a valid instruction!\n");
       break;
     case ECODE_OVF:	  /* arithmetic overflow */
-      printf("trap_handler: some code had an arithmetic overflow!\n");
+      printf_m("trap_handler: some code had an arithmetic overflow!\n");
       break;
     case ECODE_NOEX:	  /* attempt to execute to a non-executable page */
-      printf("trap_handler: some code attempted to execute a non-executable virtual address!\n");
+      printf_m("trap_handler: some code attempted to execute a non-executable virtual address!\n");
       break;
     default:
-      printf("trap_handler: unknown error code %x\n", ecode);
+      printf_m("trap_handler: unknown error code %x\n", ecode);
       break;
   }
   shutdown();
@@ -135,8 +137,8 @@ void __boot() {
     console_init();
 
     // output should now work
-    printf("Welcome to my kernel!\n");
-    printf("Running on a %d-way multi-core machine\n", current_cpu_exists());
+    printf_m("Welcome to my kernel!\n");
+    printf_m("Running on a %d-way multi-core machine\n", current_cpu_exists());
 
     // initialize memory allocators
     mem_init();
@@ -147,76 +149,50 @@ void __boot() {
     // initialize keyboard late, since it isn't really used by anything else
     keyboard_init();
     
+    //init_safe_malloc();
+    initQueue();
+    
     //intialize network capabilities
-    printf("Initializing network... ");
+    printf_m("Initializing network... ");
     network_init();
     network_set_interrupts(0);
     network_start_receive();
-    printf("network calls made \n");
+    printf_m("network calls made \n");
     
     // see which cores are already on
     for (int i = 0; i < 32; i++)
-      printf("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+      printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
 
     // turn on all other cores
     set_cpu_enable(0xFFFFFFFF);
-    
+
     // see which cores got turned on
     busy_wait(0.1);
     for (int i = 0; i < 32; i++)
-      printf("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+      printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
     
-  } else {
-    /* remaining cores boot after core 0 turns them on */
-
-    // nothing to initialize here... 
+  } else if (current_cpu_id() == 1) {
+    //printf_m("about to call poll");
+    network_poll();
   }
+  hashtable_test(1,(void *)0);
 
-  printf("Core %d of %d is alive!\n", current_cpu_id(), current_cpu_exists());
+  //printf_m("Core %d about to call analyze\n", current_cpu_id());
+  //analyze();
+
+  printf_m("Core %d of %d is alive!\n", current_cpu_id(), current_cpu_exists());
 
   busy_wait(current_cpu_id() * 0.1); // wait a while so messages from different cores don't get so mixed up
-  /*int size = 64 * 1024 * 4;
-  printf("about to do calloc(%d, 1)\n", size);
+  int size = 64 * 1024 * 4;
+  printf_m("about to do calloc(%d, 1)\n", size);
   unsigned int t0  = current_cpu_cycles();
   calloc(size, 1);
   unsigned int t1  = current_cpu_cycles();
-  printf("DONE (%u cycles)!\n", t1 - t0);
- */ /*
-  struct queue *queue=queue_new();
-  int num_polls = 0;
-  while (num_polls<50) {
-    //intialize queue
-    if (current_cpu_id()==0){
-      
-      printf("About to call network_poll()\n");
-      network_poll(queue);
-      printf("Call to network_poll() returned, num_polls is: %d\n",++num_polls);
-      printf("pointer to queue is: %p\n",queue);
-      printf("queue->buffer is: %p\n",queue->buffer);
-      printf("queue->buffer_size is: %d\n",queue->buffer_size);
-      printf("queue->length is: %d\n",queue->length); 
-    }
-  }
-  printf("pointer to queue is: %p\n",queue);
-  printf("queue->buffer is: %p\n",queue->buffer);
-  printf("queue->buffer_size is: %d\n",queue->buffer_size);
-  printf("queue->length is: %d\n",queue->length);
-  printf("Checking the contents of the queue... \n");
-  for (int i=0; i<queue->length; i++){
-     unsigned short secret = queue->buffer[i].secret_big_endian;
-     printf("The secret for packet %d is: %x\n",i,secret);
-  }
-  printf("... finished check\n");
-*/
-  for (int i = 1; i < 30; i++) {
-    int size = 1 << i;
-    printf("about to do calloc(%d, 1)\n", size);
-    calloc(size, 1);
-  }
+  printf_m("DONE (%u cycles)!\n", t1 - t0);
 
 
   while (1) {
-    //printf("Core %d is still running...\n", current_cpu_id());
+    printf_m("Core %d is still running...\n", current_cpu_id());
     busy_wait(4.0); // wait 4 seconds
   }
 

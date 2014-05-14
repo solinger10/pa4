@@ -11,24 +11,24 @@ volatile struct dev_net *network_dev;
 void network_init(){
     // Find out where I/O region is in memory.
     for (int i = 0; i < 16; i++) {
-	if (bootparams->devtable[i].type == DEV_TYPE_NETWORK) {
-	    puts("Detected network device...");
-	   
-	    // find a virtual address that maps to this I/O region
-	    network_dev = physical_to_virtual(bootparams->devtable[i].start);
-	    struct dma_ring_slot* ring = (struct dma_ring_slot*) malloc(sizeof(struct dma_ring_slot) * RING_SIZE);
-	   
-	    network_dev->rx_base = virtual_to_physical(ring);
-	    network_dev->rx_capacity = RING_SIZE;
-	    network_dev->rx_head = 0;
-	    network_dev->rx_tail = 0;
-	   
-	    for (int i = 0; i < RING_SIZE; ++i){
-		void* space = malloc(BUFFER_SIZE);
-		ring[i].dma_base = virtual_to_physical(space);
-		ring[i].dma_len = BUFFER_SIZE;
-	    }
-	}
+  if (bootparams->devtable[i].type == DEV_TYPE_NETWORK) {
+      puts("Detected network device...");
+     
+      // find a virtual address that maps to this I/O region
+      network_dev = physical_to_virtual(bootparams->devtable[i].start);
+      struct dma_ring_slot* ring = (struct dma_ring_slot*) malloc(sizeof(struct dma_ring_slot) * RING_SIZE);
+     
+      network_dev->rx_base = virtual_to_physical(ring);
+      network_dev->rx_capacity = RING_SIZE;
+      network_dev->rx_head = 0;
+      network_dev->rx_tail = 0;
+     
+      for (int i = 0; i < RING_SIZE; ++i){
+    void* space = malloc(BUFFER_SIZE);
+    ring[i].dma_base = virtual_to_physical(space);
+    ring[i].dma_len = BUFFER_SIZE;
+      }
+  }
     }
     puts("...device is ready!\n");
     return;
@@ -54,44 +54,30 @@ void network_set_interrupts(int opt) {
 }
 
 //polls the buffer and "processes" the packets into the queue
-void network_poll(struct queue *queue) {
-    while(!(network_dev->rx_head == network_dev->rx_tail)) {
-	int index = network_dev->rx_tail % 16;
-	printf("rx_head: %d, rx_tail: %d, index: %d\n",network_dev->rx_head, network_dev->rx_tail, index);
-	printf("About to access network_dev->rx_base\n");
-	struct dma_ring_slot *ring = (struct dma_ring_slot *)physical_to_virtual(network_dev->rx_base);
-	printf("About to access ring[index].dma_base: %p\n",(void *)ring[index].dma_base);
-	struct honeypot_command_packet *pkt = (struct honeypot_command_packet *)physical_to_virtual(ring[index].dma_base);
-	printf("About to add to the queue\n");
-	printf("queue is: %p, pkt is: %p\n",queue,pkt);
-	queue_add(queue,*pkt);
-	printf("About to free pointer\n");
-	free((void *)pkt);
-	printf("About to call malloc()\n");
-	void * space = malloc(BUFFER_SIZE);
-	printf("About to reassign rx_tail\n");
-	ring[index].dma_base = virtual_to_physical(space);
-	printf("New ring[index].dma_base is: %p\n",(void *)ring[index].dma_base);
-	printf("Incrementing rx_tail\n");
-	network_dev->rx_tail++;
-	printf("Checking the queue...\n");
-	printf("pointer to queue is: %p\n",queue);
-	printf("queue->buffer is: %p\n",queue->buffer);
-	printf("queue->buffer_size is: %d\n", queue->buffer_size);
-	printf("queue->length is: %d\n",queue->length);
-	printf("... end checks\n");
+void network_poll() {
+  struct dma_ring_slot *ring = (struct dma_ring_slot *) physical_to_virtual(network_dev->rx_base);
+  while(1){
+    while(network_dev->rx_tail < network_dev->rx_head) {
+      int index = network_dev->rx_tail % 16;
+      //printf_m("rx_head: %d, rx_tail: %d, index: %d\n",network_dev->rx_head, network_dev->rx_tail, index);
+      //printf_m("About to add to the queue\n");
+      queue_add((struct honeypot_command_packet *)physical_to_virtual(ring[index].dma_base));
+      //printf_m("Added to the queue\n");
+      ring[index].dma_len = BUFFER_SIZE;
+      network_dev->rx_tail++;
     }
+  }
 }
 
 void network_trap() {
-	printf("An network interrrupt has occured \n");
-	for (int i = 0; i<RING_SIZE; ++i){
-	    if (network_dev->rx_head != network_dev->rx_tail){
-	    unsigned int* ptr = (unsigned int *)physical_to_virtual(network_dev->rx_base);
-	    printf("ptr is: %p\n",ptr);
-	    printf("head is: %d, tail is: %d\n",network_dev->rx_head, network_dev->rx_tail);
-	    struct honeypot_command_packet* pkt =(struct honeypot_command_packet *) physical_to_virtual(ptr[network_dev->rx_head]);
-	    printf("The secret is : %x\n",pkt->secret_big_endian);
-	    }
-	}
+  printf("A network interrrupt has occured \n");
+  for (int i = 0; i<RING_SIZE; ++i){
+      if (network_dev->rx_head != network_dev->rx_tail){
+      unsigned int* ptr = (unsigned int *)physical_to_virtual(network_dev->rx_base);
+      printf("ptr is: %p\n",ptr);
+      printf("head is: %d, tail is: %d\n",network_dev->rx_head, network_dev->rx_tail);
+      struct honeypot_command_packet* pkt =(struct honeypot_command_packet *) physical_to_virtual(ptr[network_dev->rx_head]);
+      printf("The secret is : %x\n",pkt->secret_big_endian);
+      }
+  }
 }
