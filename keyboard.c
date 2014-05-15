@@ -30,6 +30,7 @@ void keyboard_trap() {
     char c = dev_kbd->data;
     if(c == 'p') {
       print_stats();
+      break;
     }
     
     // then just print it

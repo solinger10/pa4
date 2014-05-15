@@ -8,7 +8,11 @@ long ComputeHash(HashTable *hashTable, long key) {
 	  int hash = 5381;
     //while (key)
     hash = ((hash << 5) + hash) + (key++);
-    return hash % hashTable->totalBuckets;
+    int temp = hash % hashTable->totalBuckets;
+    if (temp < 0) {
+          temp = temp * -1;
+    }
+    return temp;
 }
 
 HashTable *hashtable_create(int totalBuckets) {
@@ -109,6 +113,7 @@ int hashtable_contains(HashTable *hashTable, long key)
 
   pair *cur = hashTable->bucketArray[offset];
   while(cur != 0){
+    //printf_m("Core %d sees cur = %p, key = %ld, offset = %d\n",current_cpu_id(),cur, key,offset);
     if(cur->key == key) return cur->value;
     cur = cur->nextEntry;
   }
@@ -238,7 +243,7 @@ void hashtable_print(HashTable *hashTable) {
     int offset = ComputeHash(hashTable, i);
     pair *cur = hashTable->bucketArray[offset];
     while (cur != 0){
-      printf_m("Key is: %ld, Value is: %d \n",cur->key, cur->value);
+      printf_m("Key is: %x, Value is: %x \n",cur->key, cur->value);
       cur = cur->nextEntry;
     }
   }

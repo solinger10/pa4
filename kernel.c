@@ -1,11 +1,9 @@
-#include "honeypot.h"
 #include "kernel.h"
-#include "hashtable.h"
+#include "honeypot.h"
 
-//void initialize_honeypot();
 struct bootparams *bootparams;
 
-int debug = 1; // change to 0 to stop seeing so many messages
+int debug = 0; // change to 0 to stop seeing so many messages
 
 void shutdown() {
   puts("Shutting down...");
@@ -149,9 +147,10 @@ void __boot() {
     // initialize keyboard late, since it isn't really used by anything else
     keyboard_init();
     
-    initialize_honeypot();
-    
+    //init_safe_malloc();
     initQueue();
+    
+    initialize_honeypot();
     
     //intialize network capabilities
     printf_m("Initializing network... ");
@@ -161,25 +160,26 @@ void __boot() {
     printf_m("network calls made \n");
     
     // see which cores are already on
-    for (int i = 0; i < 32; i++)
-      printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+    //for (int i = 0; i < 32; i++)
+      //printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
 
     // turn on all other cores
     set_cpu_enable(0xFFFFFFFF);
-
+    
+    //keeps core 0 looping so it can handle interrupts by itself
+    while(1){}
     // see which cores got turned on
-    busy_wait(0.1);
-    for (int i = 0; i < 32; i++)
-      printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+    //busy_wait(0.1);
+    //for (int i = 0; i < 32; i++)
+      //printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
     
   } else if (current_cpu_id() == 1) {
     //printf_m("about to call poll");
     network_poll();
   }
- 
+  
 
-   
-  //printf_m("Core %d about to call analyze\n", current_cpu_id());
+  //printf_m("about to call analyze\n");
   analyze();
 
   printf_m("Core %d of %d is alive!\n", current_cpu_id(), current_cpu_exists());

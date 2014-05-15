@@ -1,3 +1,4 @@
+#define HASHTABLE_SIZE 1000
 
 typedef struct pair {
 	struct pair *nextEntry;

@@ -2,6 +2,7 @@
 #define _KERNEL_H_
 
 #include "machine.h"
+#include "honeypot.h"
 #include "console.h"
 #include "keyboard.h"
 #include "network.h"

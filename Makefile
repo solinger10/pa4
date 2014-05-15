@@ -22,6 +22,9 @@ COMMONFLAGS += -Wall
 # Make all warnings into fatal errors.
 COMMONFLAGS += -Werror 
 
+FLAGS_queue = -O3
+FLAGS_honeypot = -O3
+FLAGS_hashtable = -O3
 # Optionally turn on compiler optimizations. 
 #
 # BEWARE: This can cause your code to do very unexpected things, such as
