@@ -21,6 +21,7 @@ int queue_add(struct honeypot_command_packet *x)
   if(nextElement != m_Read)
   {
     m_Data[m_Write] = *x;
+    //free(x);
     m_Write = nextElement;
     return 1;
   }

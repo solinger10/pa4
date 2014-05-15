@@ -3,7 +3,7 @@
 
 struct bootparams *bootparams;
 
-int debug = 1; // change to 0 to stop seeing so many messages
+int debug = 0; // change to 0 to stop seeing so many messages
 
 void shutdown() {
   puts("Shutting down...");
@@ -158,16 +158,18 @@ void __boot() {
     printf_m("network calls made \n");
     
     // see which cores are already on
-    for (int i = 0; i < 32; i++)
-      printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+    //for (int i = 0; i < 32; i++)
+      //printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
 
     // turn on all other cores
     set_cpu_enable(0xFFFFFFFF);
-
+    
+    //keeps core 0 looping so it can handle interrupts by itself
+    while(1){}
     // see which cores got turned on
-    busy_wait(0.1);
-    for (int i = 0; i < 32; i++)
-      printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+    //busy_wait(0.1);
+    //for (int i = 0; i < 32; i++)
+      //printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
     
   } else if (current_cpu_id() == 1) {
     //printf_m("about to call poll");

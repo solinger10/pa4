@@ -1,8 +1,8 @@
 #define RING_SIZE NET_MAX_RING_CAPACITY
 #define BUFFER_SIZE NET_MAXPKT
 
+#include "kernel.h"
 #include "network.h"
- 
 
 //a pointer to the memory-maped I/O region for the network card
 volatile struct dev_net *network_dev;
@@ -24,9 +24,9 @@ void network_init(){
       network_dev->rx_tail = 0;
      
       for (int i = 0; i < RING_SIZE; ++i){
-    void* space = malloc(BUFFER_SIZE);
-    ring[i].dma_base = virtual_to_physical(space);
-    ring[i].dma_len = BUFFER_SIZE;
+        void* space = malloc(BUFFER_SIZE);
+        ring[i].dma_base = virtual_to_physical(space);
+        ring[i].dma_len = BUFFER_SIZE;
       }
   }
     }
@@ -58,11 +58,15 @@ void network_poll() {
   struct dma_ring_slot *ring = (struct dma_ring_slot *) physical_to_virtual(network_dev->rx_base);
   while(1){
     while(network_dev->rx_tail < network_dev->rx_head) {
-      int index = network_dev->rx_tail % 16;
+      int index = network_dev->rx_tail & 15;
       //printf_m("rx_head: %d, rx_tail: %d, index: %d\n",network_dev->rx_head, network_dev->rx_tail, index);
       //printf_m("About to add to the queue\n");
       queue_add((struct honeypot_command_packet *)physical_to_virtual(ring[index].dma_base));
       //printf_m("Added to the queue\n");
+      //free((void *)(0xC0000000 + ring[index].dma_base));
+      //void* space = malloc(BUFFER_SIZE);
+      //ring[index].dma_base = virtual_to_physical(space);
+      //printf_m("dma_len: %d\n", ring[index].dma_len);
       ring[index].dma_len = BUFFER_SIZE;
       network_dev->rx_tail++;
     }
