@@ -1,6 +1,7 @@
 #ifndef HONEYPOT_H_
 #define HONEYPOT_H_
 
+#include "queue.h"
 /*
  * Honeypot command packets have the following format.
  *
@@ -96,10 +97,31 @@ struct honeypot_command_packet {
 // The 'data' field can be ignored.
 #define HONEYPOT_PRINT		0x301
 
+//intialize the three lists
+void initialize_honeypot();
+
 //analyses the data, loops continuously
 void analyze();
 
 //prints statistics
 void print_stats();
 
+//handles a command packet
+void handle_command(struct tuple* tup);
+
+//handles a non-command packet
+void handle_regular(struct tuple* tup);
+
+//converts an unsigned short from big to little endianness
+unsigned short big_to_little_short(unsigned short val);
+
+//converts an unsigned int from big to little endianness
+unsigned int big_to_little_int(unsigned int val);
+
+//djb2 hash function
+unsigned int djb2(unsigned char *pkt, int n);
+
 #endif
+
+
+

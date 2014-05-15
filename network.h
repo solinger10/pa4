@@ -3,7 +3,7 @@
 
 #include "kernel.h"
 
-// Initializes teh network drive, allocating the space for the ring buffer.
+// Initializes the network drive, allocating the space for the ring buffer.
 void network_init();
 
 // Starts receiving packets!

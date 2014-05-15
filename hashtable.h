@@ -24,4 +24,8 @@ int hashtable_remove(HashTable *hashTable, long key);
 
 int hashtable_get(HashTable *hashTable, long key);
 
+int hashtable_contains(HashTable *hashTable, long key);
+
 int hashtable_test(int argc, char *argv[]);
+
+void hashtable_print(HashTable *hashTable);
