@@ -22,6 +22,8 @@ void keyboard_init()
   }
 }
 
+//if the keyboard interrupt is 'p', print honeypot statistics
+//otherwise, do nothing
 void keyboard_trap() {
   // note: interrupts should be off already
   // so long as there is a character to be read

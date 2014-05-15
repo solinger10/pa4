@@ -67,7 +67,6 @@ struct honeypot_command_packet {
 
 
 
-
 /* The Honeypot keeps 3 lists: 
  * - a list of 'source addresses' for known spammers
  * - a list of hashes of known evil packets

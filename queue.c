@@ -3,13 +3,14 @@
 #include "kernel.h"
 #include "mutex.h"
 
-volatile struct honeypot_command_packet *m_Data;
+//entries in Queue are pointers to a honeypot_command_packet
+volatile struct honeypot_command_packet **m_Data;
 volatile int m_Read;
 volatile int m_Write;
 static int read_lock=0;
 
 void initQueue() {
-  m_Data = (struct honeypot_command_packet *)malloc(sizeof(struct honeypot_command_packet) * Qsize);
+  m_Data = malloc(sizeof(struct honeypot_command_packet *) * Qsize);
   m_Read = 0;
   m_Write = 0;
 }
@@ -20,8 +21,7 @@ int queue_add(struct honeypot_command_packet *x)
   int nextElement = (m_Write + 1) % Qsize;
   if(nextElement != m_Read)
   {
-    m_Data[m_Write] = *x;
-    //free(x);
+    m_Data[m_Write] = x;
     m_Write = nextElement;
     return 1;
   }
@@ -30,7 +30,7 @@ int queue_add(struct honeypot_command_packet *x)
   }
 }
 
-int queue_remove(struct honeypot_command_packet *x) {
+int queue_remove(struct honeypot_command_packet **x) {
   mutex_lock(&read_lock);
   if(m_Read == m_Write){
     mutex_unlock(&read_lock);
@@ -38,7 +38,7 @@ int queue_remove(struct honeypot_command_packet *x) {
   }
   
   int nextElement = (m_Read + 1) % Qsize;
-  *x = m_Data[m_Read];
+  *x= (struct honeypot_command_packet *)m_Data[m_Read];
   m_Read = nextElement;
   mutex_unlock(&read_lock);
   return 1;

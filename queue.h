@@ -1,7 +1,7 @@
 
 #include "kernel.h"
 
-#define Qsize 1000
+#define Qsize 500
 
 // adds the packet to the end of the queue
 int queue_add(struct honeypot_command_packet *x);
@@ -10,4 +10,5 @@ int queue_add(struct honeypot_command_packet *x);
 void initQueue();
 
 // pops a packet off the queue
-int queue_remove(struct honeypot_command_packet *x);
+int queue_remove(struct honeypot_command_packet **x);
+

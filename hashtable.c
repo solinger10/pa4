@@ -1,6 +1,5 @@
 //http://stackoverflow.com/questions/25282/how-would-you-implement-a-hashtable-in-language-x
 
-
 #include "hashtable.h"
 #include "kernel.h"
 
@@ -60,7 +59,7 @@ pair* AppendLinkedNode (pair* pair, long key, int value)
 {
   //follow point till end
 	while (pair->nextEntry != 0){
-		if (pair->value == value) return 0;
+		if (pair->key == key) return 0; //key changed from "value" mtm86
 		pair = pair->nextEntry;
 	}
 	pair->nextEntry=NewNode(key,value);
@@ -77,7 +76,7 @@ int hashtable_remove(HashTable *hashTable, long key) {
     do {
       if(cur->key == key) {
         if(prev == 0) {
-	  hashTable->bucketArray[offset] = cur->nextEntry; //added by mtm86
+	  hashTable->bucketArray[offset] = cur->nextEntry; //believed error in code from internet; line added by mtm86
           free((void *)cur);
           return 0;
         } else {
@@ -86,8 +85,8 @@ int hashtable_remove(HashTable *hashTable, long key) {
           return 0;
         }
       } else {
-        prev = cur;  //error fixed by mtm86
-        cur = (cur->nextEntry); // error fixed by mtm86
+        prev = cur;  //believed error in original code error fixed by mtm86: line was "*prev = *cur"
+        cur = (cur->nextEntry); //believed error in original code error fixed by mtm86: line was "*cur = *(cur->nextEntry)"
       }
     } while(cur != 0);
   }
@@ -106,14 +105,13 @@ int hashtable_get(HashTable *hashTable, long key)
   return 0;
 }
 
-//return -1 if does not contain key
+//return -1 if does not contain key, else return the corresponding value
 int hashtable_contains(HashTable *hashTable, long key)
 {
   int offset = ComputeHash(hashTable, key);
 
   pair *cur = hashTable->bucketArray[offset];
   while(cur != 0){
-    //printf_m("Core %d sees cur = %p, key = %ld, offset = %d\n",current_cpu_id(),cur, key,offset);
     if(cur->key == key) return cur->value;
     cur = cur->nextEntry;
   }
@@ -238,12 +236,13 @@ int hashtable_test(int argc, char *argv[]) {
     return 0;
 }
 
+//print the Key and the Value for every entry in the hashtable
 void hashtable_print(HashTable *hashTable) {
   for (int i = 0; i< hashTable->totalBuckets; i++) {
     int offset = ComputeHash(hashTable, i);
     pair *cur = hashTable->bucketArray[offset];
     while (cur != 0){
-      printf_m("Key is: %x, Value is: %x \n",cur->key, cur->value);
+      printf_m("Key is: %x, Value is: %d \n",cur->key, cur->value);
       cur = cur->nextEntry;
     }
   }

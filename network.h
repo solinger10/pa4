@@ -16,7 +16,7 @@ void network_set_interrupts(int opt);
 // Continually polls for data on the ring buffer. Loops forever!
 void network_poll();
 
-// Called when a network interrupt occurs.
+//called when a network interrupt occurs
 void network_trap();
 
 #endif

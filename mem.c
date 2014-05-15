@@ -342,17 +342,16 @@ void free(void *pointer)
     bitmap_set(elt->bitmap, idx, 0);
     // we could, if we want, free the whole page if all the blocks on the page
     // are empty, but we won't bother
-    mutex_unlock(&free_lock);
   } else if (*magic == 0xf00dface) {
     // big block
     struct bigblock_info *elt = page;
     elt->magic = 0xdeadf00d; // erase the magic number
     free_pages(page, elt->pagecount);
-    mutex_unlock(&free_lock);
   } else {
     printf_m("free: virtual address %p has bad magic (0x%x), either didn't come from malloc, was freed, or is corrupted\n", pointer, *magic);
     shutdown();
   }
+  mutex_unlock(&free_lock);
 }
 
 void mem_init()

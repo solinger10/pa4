@@ -16,7 +16,7 @@ void mutex_lock(int *lock) {
   asm volatile ("nop");
 }
 
-
+//write 0 to the lock
 void mutex_unlock(int *lock) {
   *lock = 0;
 }

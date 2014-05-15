@@ -562,6 +562,7 @@ int printf_i (const char *format, ...)
   return ret;
 }
 
+//lock to ensure that only one core will be printing to screen at a given time
 static int printf_mutex = 0;
 int printf_m (const char *format, ...)
 {
@@ -596,7 +597,8 @@ int printf (const char *format, ...)
 
 */
 
-// default printf is the same as printf_i, for now
+// default printf is the same as printf_i
+//NOT concurrency-safe
 int printf (const char *format, ...)
 {
   int *varg = (int *) (char *) (&format);

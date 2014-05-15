@@ -58,31 +58,13 @@ void network_poll() {
   struct dma_ring_slot *ring = (struct dma_ring_slot *) physical_to_virtual(network_dev->rx_base);
   while(1){
     while(network_dev->rx_tail < network_dev->rx_head) {
-      //printf_m("Receiving a packet!\n");
       int index = network_dev->rx_tail & 15;
-      //printf_m("rx_head: %d, rx_tail: %d, index: %d\n",network_dev->rx_head, network_dev->rx_tail, index);
-      //printf_m("About to add to the queue\n");
       queue_add((struct honeypot_command_packet *)physical_to_virtual(ring[index].dma_base));
-      //printf_m("Added to the queue\n");
-      //free((void *)(0xC0000000 + ring[index].dma_base));
-      //void* space = malloc(BUFFER_SIZE);
-      //ring[index].dma_base = virtual_to_physical(space);
-      //printf_m("dma_len: %d\n",ring[index].dma_len);
       ring[index].dma_len = BUFFER_SIZE;
       network_dev->rx_tail++;
     }
   }
 }
 
-void network_trap() {
-  printf("A network interrrupt has occured \n");
-  for (int i = 0; i<RING_SIZE; ++i){
-      if (network_dev->rx_head != network_dev->rx_tail){
-      unsigned int* ptr = (unsigned int *)physical_to_virtual(network_dev->rx_base);
-      printf("ptr is: %p\n",ptr);
-      printf("head is: %d, tail is: %d\n",network_dev->rx_head, network_dev->rx_tail);
-      struct honeypot_command_packet* pkt =(struct honeypot_command_packet *) physical_to_virtual(ptr[network_dev->rx_head]);
-      printf("The secret is : %x\n",pkt->secret_big_endian);
-      }
-  }
-}
+//currently, we do not support network interrupting, so this function does nothing
+void network_trap(){}

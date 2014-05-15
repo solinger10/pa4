@@ -147,7 +147,6 @@ void __boot() {
     // initialize keyboard late, since it isn't really used by anything else
     keyboard_init();
     
-    //init_safe_malloc();
     initQueue();
     
     initialize_honeypot();
@@ -159,44 +158,23 @@ void __boot() {
     network_start_receive();
     printf_m("network calls made \n");
     
-    // see which cores are already on
-    //for (int i = 0; i < 32; i++)
-      //printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+    
 
     // turn on all other cores
     set_cpu_enable(0xFFFFFFFF);
     
-    //keeps core 0 looping so it can handle interrupts by itself
+    //cpu 0 waits for keyboard interrupts
     while(1){}
-    // see which cores got turned on
-    //busy_wait(0.1);
-    //for (int i = 0; i < 32; i++)
-      //printf_m("CPU[%d] is %s\n", i, (current_cpu_enable() & (1<<i)) ? "on" : "off");
+  
     
-  } else if (current_cpu_id() == 1) {
-    //printf_m("about to call poll");
+  }
+  //cpu 1 performs polling
+  else if (current_cpu_id() == 1) {
     network_poll();
   }
   
-
-  //printf_m("about to call analyze\n");
+  //all other cpu run analyze forever
   analyze();
-
-  printf_m("Core %d of %d is alive!\n", current_cpu_id(), current_cpu_exists());
-
-  busy_wait(current_cpu_id() * 0.1); // wait a while so messages from different cores don't get so mixed up
-  int size = 64 * 1024 * 4;
-  printf_m("about to do calloc(%d, 1)\n", size);
-  unsigned int t0  = current_cpu_cycles();
-  calloc(size, 1);
-  unsigned int t1  = current_cpu_cycles();
-  printf_m("DONE (%u cycles)!\n", t1 - t0);
-
-
-  while (1) {
-    printf_m("Core %d is still running...\n", current_cpu_id());
-    busy_wait(4.0); // wait 4 seconds
-  }
 
   shutdown();
 }
