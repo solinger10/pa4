@@ -1,8 +1,8 @@
-#include "kernel.h"
 #include "honeypot.h"
+#include "kernel.h"
 #include "hashtable.h"
 
-
+//void initialize_honeypot();
 struct bootparams *bootparams;
 
 int debug = 1; // change to 0 to stop seeing so many messages
@@ -149,7 +149,8 @@ void __boot() {
     // initialize keyboard late, since it isn't really used by anything else
     keyboard_init();
     
-    //init_safe_malloc();
+    initialize_honeypot();
+    
     initQueue();
     
     //intialize network capabilities
@@ -175,10 +176,11 @@ void __boot() {
     //printf_m("about to call poll");
     network_poll();
   }
-  hashtable_test(1,(void *)0);
+ 
 
+   
   //printf_m("Core %d about to call analyze\n", current_cpu_id());
-  //analyze();
+  analyze();
 
   printf_m("Core %d of %d is alive!\n", current_cpu_id(), current_cpu_exists());
 

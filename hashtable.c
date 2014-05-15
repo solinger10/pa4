@@ -102,6 +102,18 @@ int hashtable_get(HashTable *hashTable, long key)
   return 0;
 }
 
+//return -1 if does not contain key
+int hashtable_contains(HashTable *hashTable, long key)
+{
+  int offset = ComputeHash(hashTable, key);
+
+  pair *cur = hashTable->bucketArray[offset];
+  while(cur != 0){
+    if(cur->key == key) return cur->value;
+    cur = cur->nextEntry;
+  }
+  return -1;
+}
 // Basic test
 
 
@@ -221,3 +233,13 @@ int hashtable_test(int argc, char *argv[]) {
     return 0;
 }
 
+void hashtable_print(HashTable *hashTable) {
+  for (int i = 0; i< hashTable->totalBuckets; i++) {
+    int offset = ComputeHash(hashTable, i);
+    pair *cur = hashTable->bucketArray[offset];
+    while (cur != 0){
+      printf_m("Key is: %ld, Value is: %d \n",cur->key, cur->value);
+      cur = cur->nextEntry;
+    }
+  }
+}

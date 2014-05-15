@@ -7,6 +7,7 @@ volatile struct honeypot_command_packet *m_Data;
 volatile int m_Read;
 volatile int m_Write;
 static int read_lock=0;
+//static int write_lock = 0;
 
 void initQueue() {
   m_Data = (struct honeypot_command_packet *)malloc(sizeof(struct honeypot_command_packet) * Qsize);
@@ -14,17 +15,20 @@ void initQueue() {
   m_Write = 0;
 }
 
-//only one core can call this
+//only one cpu can call this
 int queue_add(struct honeypot_command_packet *x)
-{
+{ 
+  //mutex_lock(&write_lock);
   int nextElement = (m_Write + 1) % Qsize;
   if(nextElement != m_Read)
   {
     m_Data[m_Write] = *x;
     m_Write = nextElement;
+    //mutex_unlock(&write_lock);
     return 1;
   }
   else{
+    //mutex_unlock(&write_lock);
     return 0;
   }
 }
